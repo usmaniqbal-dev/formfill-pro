@@ -173,7 +173,16 @@ convertBtn.addEventListener("click", async () => {
     const url        = URL.createObjectURL(blob);
     const anchor     = document.createElement("a");
     anchor.href      = url;
-    anchor.download  = "completed_form.pdf";
+    // Try to read filename from Content-Disposition header set by Flask
+    let filename = "completed_form.pdf";
+    const disposition = response.headers.get("Content-Disposition");
+    if (disposition) {
+      const match = /filename\*?=(?:UTF-8''?)?["']?([^;"']+)/i.exec(disposition);
+      if (match && match[1]) {
+        try { filename = decodeURIComponent(match[1]); } catch (_) { filename = match[1]; }
+      }
+    }
+    anchor.download = filename;
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();

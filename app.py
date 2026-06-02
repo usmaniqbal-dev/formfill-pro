@@ -228,12 +228,19 @@ def fill():
         log.exception("PDF fill error")
         return jsonify({"error": f"PDF generation failed: {e}"}), 500
 
-    # 4. Download
+    # 4. Download — set filename using BUSINESS_LEGAL_NAME if present
+    business_name = slots.get("BUSINESS_LEGAL_NAME", "").strip()
+    if business_name:
+        # remove characters not allowed in filenames
+        safe_name = "".join(c for c in business_name if c not in '/\\?%*:|"<>').strip()
+        download_name = f"APCG-{safe_name}.pdf"
+    else:
+        download_name = "APCG-completed_form.pdf"
     return send_file(
         str(out_path),
         mimetype="application/pdf",
         as_attachment=True,
-        download_name="completed_form.pdf",
+        download_name=download_name,
     )
 
 
