@@ -21,7 +21,7 @@ app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 
 BASE_DIR = Path(__file__).parent
 PDF_DIR  = BASE_DIR / "pdf"
-GEN_DIR  = BASE_DIR / "generated"
+GEN_DIR  = Path("/tmp/generated")
 TEMPLATE = PDF_DIR  / "template.pdf"
 
 GEN_DIR.mkdir(exist_ok=True)
