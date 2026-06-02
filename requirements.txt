@@ -1,0 +1,7 @@
+# FormFill Pro — Python dependencies
+# Install with:  pip install -r requirements.txt
+
+Flask>=2.2.5
+PyMuPDF>=1.23.0
+pypdf>=3.20.0
+gunicorn>=20.1.0
