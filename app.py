@@ -21,10 +21,10 @@ app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 
 BASE_DIR = Path(__file__).parent
 PDF_DIR  = BASE_DIR / "pdf"
-GEN_DIR  = Path("/tmp/generated")
+GEN_DIR  = BASE_DIR / "generated"
 TEMPLATE = PDF_DIR  / "template.pdf"
 
-GEN_DIR.mkdir(exist_ok=True)
+GEN_DIR.mkdir(parents=True, exist_ok=True)
 
 # ------------------ Authentication / User store ------------------
 # SECRET_KEY from environment with local fallback
@@ -92,7 +92,7 @@ def create_user(username, password, is_admin=0):
 
 
 # Protect selected routes — redirect to login for browser GETs, return 401 JSON for API/POST
-PROTECTED_PATHS = ('/', '/fill', '/template-pdf', '/fields-info')
+PROTECTED_PATHS = ('/fill', '/template-pdf', '/fields-info')
 
 @app.before_request
 def require_login_before_view():
