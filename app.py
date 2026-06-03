@@ -26,6 +26,107 @@ TEMPLATE = PDF_DIR  / "template.pdf"
 
 GEN_DIR.mkdir(exist_ok=True)
 
+# ------------------ Authentication / User store ------------------
+# SECRET_KEY from environment with local fallback
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-for-local-testing")
+
+DB_PATH = BASE_DIR / "users.db"
+
+import sqlite3
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask import session, redirect, url_for, flash
+from functools import wraps
+
+
+def get_db():
+    conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db():
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute('''CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        is_admin INTEGER NOT NULL DEFAULT 0
+    )''')
+    conn.commit()
+
+    # Ensure default admin exists (backend-only credentials)
+    cur.execute('SELECT * FROM users WHERE username = ?', ('ADMINUSMAN',))
+    if not cur.fetchone():
+        cur.execute('INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, ?)',
+                    ('ADMINUSMAN', generate_password_hash('USMAN52@$', method='pbkdf2:sha256'), 1))
+        conn.commit()
+    conn.close()
+
+
+# initialize DB and default admin
+init_db()
+
+
+def get_user(username):
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM users WHERE username = ?', (username,))
+    row = cur.fetchone()
+    conn.close()
+    return row
+
+
+def create_user(username, password, is_admin=0):
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute('INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, ?)',
+                    (username, generate_password_hash(password, method='pbkdf2:sha256'), is_admin))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+
+# Protect selected routes — redirect to login for browser GETs, return 401 JSON for API/POST
+PROTECTED_PATHS = ('/', '/fill', '/template-pdf', '/fields-info')
+
+@app.before_request
+def require_login_before_view():
+    # allow static assets and login/logout/admin endpoints
+    if request.path.startswith('/static') or request.path.startswith('/login') or request.path.startswith('/logout') or request.path.startswith('/admin'):
+        return None
+
+    for p in PROTECTED_PATHS:
+        if request.path == p or request.path.startswith(p):
+            if 'user' in session:
+                return None
+            # API/JSON/POST -> return JSON 401
+            if request.method == 'POST' or request.is_json:
+                return jsonify({'error': 'Authentication required'}), 401
+            # otherwise redirect to login (preserve next)
+            return redirect(url_for('login', next=request.path))
+
+    return None
+
+
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        username = session.get('user')
+        if not username:
+            return redirect(url_for('login'))
+        user = get_user(username)
+        if user and user['is_admin']:
+            return f(*args, **kwargs)
+        return jsonify({'error': 'Admin privileges required'}), 403
+    return decorated
+
+# ------------------------------------------------------------------
+
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 log = logging.getLogger(__name__)
 
@@ -254,6 +355,58 @@ def fields_info():
                for w in doc[0].widgets()]
     doc.close()
     return jsonify({"total": len(widgets), "fields": widgets})
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    next_url = request.args.get('next') or request.form.get('next') or url_for('index')
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        if not username or not password:
+            flash('Username and password required', 'error')
+            return render_template('login.html', next=next_url), 400
+        user = get_user(username)
+        if user and check_password_hash(user['password_hash'], password):
+            session['user'] = user['username']
+            session['is_admin'] = bool(user['is_admin'])
+            return redirect(next_url)
+        flash('Invalid username or password', 'error')
+        return render_template('login.html', next=next_url), 401
+    return render_template('login.html', next=next_url)
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+
+@app.route('/admin/users', methods=['GET', 'POST'])
+@admin_required
+def admin_users():
+    # GET: view users. POST: add user.
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        is_admin_flag = 1 if request.form.get('is_admin') == 'on' else 0
+        if not username or not password:
+            flash('Username and password required', 'error')
+        else:
+            created = create_user(username, password, is_admin_flag)
+            if not created:
+                flash('Username already exists', 'error')
+            else:
+                flash('User created', 'success')
+        return redirect(url_for('admin_users'))
+
+    # list users
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute('SELECT username, is_admin FROM users ORDER BY username')
+    users = cur.fetchall()
+    conn.close()
+    return render_template('admin_users.html', users=users)
 
 
 if __name__ == "__main__":

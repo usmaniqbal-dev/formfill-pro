@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Admin - Users</title>
+    <link rel="stylesheet" href="/static/css/style.css" />
+    <style>
+      body{font-family:inherit;padding:24px}
+      table{width:100%;border-collapse:collapse;margin-bottom:16px}
+      th,td{padding:8px;border:1px solid #eee;text-align:left}
+      form .row{display:flex;gap:8px}
+      form input{padding:8px;border:1px solid #ddd;border-radius:6px}
+      .actions{display:flex;gap:8px}
+    </style>
+  </head>
+  <body>
+    <h1>Users</h1>
+    <p><a href="/">Back to app</a> · <a href="/logout">Logout</a></p>
+
+    <table>
+      <thead>
+        <tr><th>Username</th><th>Admin</th></tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr><td>{{ u.username }}</td><td>{{ 'Yes' if u.is_admin else 'No' }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h2>Add user</h2>
+    <form method="post" action="/admin/users">
+      <div class="row">
+        <input name="username" placeholder="username" required />
+        <input name="password" type="password" placeholder="password" required />
+        <label><input type="checkbox" name="is_admin" /> admin</label>
+        <button type="submit">Add</button>
+      </div>
+    </form>
+  </body>
+</html>

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Login</title>
+    <link rel="stylesheet" href="/static/css/style.css" />
+    <style>
+      /* minimal centering for login */
+      body{display:flex;align-items:center;justify-content:center;height:100vh;margin:0}
+      .login-card{width:320px;padding:24px;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.08);background:#fff}
+      .login-card h2{margin:0 0 12px;font-size:20px}
+      .login-card input{width:100%;padding:10px;margin:8px 0;border:1px solid #ddd;border-radius:6px}
+      .login-card button{width:100%;padding:10px;margin-top:8px;border-radius:6px;background:var(--accent);color:#fff;border:0}
+    </style>
+  </head>
+  <body>
+    <form class="login-card" method="post" action="/login">
+      <h2>Login</h2>
+      <input name="username" type="text" placeholder="Username" autocomplete="username" required />
+      <input name="password" type="password" placeholder="Password" autocomplete="current-password" required />
+      <input type="hidden" name="next" value="{{ next }}" />
+      <button type="submit">Login</button>
+    </form>
+  </body>
+</html>
