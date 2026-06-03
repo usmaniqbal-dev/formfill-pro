@@ -8,6 +8,7 @@ import uuid
 import logging
 from datetime import date
 from pathlib import Path
+import tempfile
 
 import fitz                          # PyMuPDF
 from flask import (
@@ -21,16 +22,19 @@ app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 
 BASE_DIR = Path(__file__).parent
 PDF_DIR  = BASE_DIR / "pdf"
-GEN_DIR  = BASE_DIR / "generated"
+# Use a writable runtime temp directory (e.g. /tmp on Vercel). Allows serverless deployments.
+RUNTIME_TMP = Path(os.environ.get("TEMP_DIR") or tempfile.gettempdir())
+GEN_DIR  = RUNTIME_TMP / "generated"
 TEMPLATE = PDF_DIR  / "template.pdf"
 
+# Ensure the generated directory exists in the writable temp area
 GEN_DIR.mkdir(parents=True, exist_ok=True)
 
 # ------------------ Authentication / User store ------------------
 # SECRET_KEY from environment with local fallback
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-for-local-testing")
 
-DB_PATH = BASE_DIR / "users.db"
+DB_PATH = RUNTIME_TMP / "users.db"
 
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
